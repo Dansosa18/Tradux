@@ -1,12 +1,193 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tradux</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tradux — Compilador Traductor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/styles.css"/>
 </head>
 <body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">⌥</span>
+      <span class="logo-text">Tradux</span>
+      <span class="logo-tag">Compilador</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showPanel('translator')">Traductor</button>
+      <button class="nav-btn" onclick="showPanel('tokens')">Tokens</button>
+      <button class="nav-btn" onclick="showPanel('symbols')">Símbolos</button>
+      <button class="nav-btn" onclick="showPanel('errors')">Errores</button>
+      <button class="nav-btn" onclick="showPanel('tree')">Árbol BNF</button>
+    </nav>
+  </header>
+
+  <!-- PANEL: TRANSLATOR -->
+  <main class="panel active" id="panel-translator">
+
+    <div class="lang-bar">
+      <div class="lang-selector">
+        <button class="lang-btn active" id="btn-en" onclick="setLang('EN')">🇺🇸 English</button>
+        <button class="swap-btn" onclick="swapLangs()" title="Intercambiar idiomas">⇄</button>
+        <button class="lang-btn active" id="btn-es" onclick="setLang('ES')">🇬🇹 Español</button>
+      </div>
+      <div class="actions">
+        <label class="file-btn" title="Cargar archivo .txt">
+          📂 Cargar .txt
+          <input type="file" accept=".txt" onchange="loadFile(event)" hidden/>
+        </label>
+        <button class="compile-btn" onclick="compile()">▶ Compilar</button>
+        <button class="clear-btn" onclick="clearAll()">✕ Limpiar</button>
+      </div>
+    </div>
+
+    <div class="editor-grid">
+      <!-- INPUT -->
+      <div class="editor-box">
+        <div class="editor-header">
+          <span id="input-lang-label">🇺🇸 Inglés (Entrada)</span>
+          <span class="char-count" id="char-count">0 caracteres</span>
+        </div>
+        <textarea
+          id="input-text"
+          placeholder="Escribe o pega el texto aquí..."
+          oninput="updateCharCount()"
+          spellcheck="false"
+        ></textarea>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-icon">⌥</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- OUTPUT -->
+      <div class="editor-box output-box">
+        <div class="editor-header">
+          <span id="output-lang-label">🇬🇹 Español (Traducción)</span>
+          <button class="copy-btn" onclick="copyOutput()" title="Copiar traducción">⎘ Copiar</button>
+        </div>
+        <div id="output-text" class="output-text">
+          <span class="placeholder-text">La traducción aparecerá aquí...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar" id="status-bar">
+      <span id="status-msg">Listo para compilar.</span>
+      <div class="status-indicators">
+        <span class="indicator" id="ind-lex" title="Análisis Léxico">LEX</span>
+        <span class="indicator" id="ind-syn" title="Análisis Sintáctico">SIN</span>
+        <span class="indicator" id="ind-sem" title="Análisis Semántico">SEM</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- PANEL: TOKENS -->
+  <main class="panel" id="panel-tokens">
+    <div class="panel-header">
+      <h2>🔤 Tabla de Tokens</h2>
+      <p>Tokens identificados por el analizador léxico</p>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="token-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Token</th>
+            <th>Lexema</th>
+            <th>Categoría</th>
+            <th>Línea</th>
+          </tr>
+        </thead>
+        <tbody id="token-body">
+          <tr><td colspan="5" class="empty-row">Ejecuta el compilador primero.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- PANEL: SYMBOLS -->
+  <main class="panel" id="panel-symbols">
+    <div class="panel-header">
+      <h2>📋 Tabla de Símbolos</h2>
+      <p>Clasificación completa de cada palabra identificada</p>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="symbol-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Palabra (Original)</th>
+            <th>Traducción</th>
+            <th>Tipo</th>
+            <th>Subtipo</th>
+            <th>Línea</th>
+          </tr>
+        </thead>
+        <tbody id="symbol-body">
+          <tr><td colspan="6" class="empty-row">Ejecuta el compilador primero.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- PANEL: ERRORS -->
+  <main class="panel" id="panel-errors">
+    <div class="panel-header">
+      <h2>⚠️ Tabla de Errores</h2>
+      <p>Errores detectados durante los análisis</p>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="error-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tipo</th>
+            <th>Palabra</th>
+            <th>Línea</th>
+            <th>Descripción</th>
+          </tr>
+        </thead>
+        <tbody id="error-body">
+          <tr><td colspan="5" class="empty-row">No hay errores registrados.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- PANEL: ÁRBOL BNF -->
+  <main class="panel" id="panel-tree">
+    <div class="panel-header">
+      <h2>🌳 Árbol de Derivación BNF</h2>
+      <p>Representación del análisis sintáctico</p>
+    </div>
+    <div class="tree-container" id="tree-container">
+      <p class="placeholder-text">Ejecuta el compilador primero para ver el árbol.</p>
+    </div>
+    <div class="bnf-rules">
+      <h3>Reglas BNF</h3>
+      <pre id="bnf-display">Las reglas BNF aparecerán aquí...</pre>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <span>Tradux © 2026 — Compiladores, UMG Jutiapa</span>
+    <span>v1.0.0</span>
+  </footer>
+
+  <script src="js/dictionary.js"></script>
+  <script src="js/lexer.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/semantic.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
