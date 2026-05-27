@@ -1,18 +1,19 @@
+
 // =============================================
 // TRADUX — app.js
 // Controlador principal de la interfaz
+// Autor del commit: Daniel
 // =============================================
 
-let currentInputLang = 'EN'; // idioma de entrada por defecto
+let currentInputLang = 'EN';
 
 // --- Navegación entre paneles ---
 function showPanel(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
-  const btns = document.querySelectorAll('.nav-btn');
   const names = ['translator','tokens','symbols','errors','tree'];
-  btns[names.indexOf(name)].classList.add('active');
+  document.querySelectorAll('.nav-btn')[names.indexOf(name)].classList.add('active');
 }
 
 // --- Configurar idioma de entrada ---
@@ -39,14 +40,11 @@ function updateLangLabels() {
 function swapLangs() {
   const inputBox  = document.getElementById('input-text');
   const outputBox = document.getElementById('output-text');
-
-  // Si hay traducción, moverla al input
   const outputText = outputBox.innerText.trim();
   if (outputText && outputText !== 'La traducción aparecerá aquí...') {
     inputBox.value = outputText;
     outputBox.innerHTML = '<span class="placeholder-text">La traducción aparecerá aquí...</span>';
   }
-
   currentInputLang = (currentInputLang === 'EN') ? 'ES' : 'EN';
   updateLangLabels();
   updateCharCount();
@@ -63,7 +61,7 @@ function loadFile(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = e => {
     document.getElementById('input-text').value = e.target.result;
     updateCharCount();
   };
@@ -83,46 +81,84 @@ function copyOutput() {
 // --- Limpiar todo ---
 function clearAll() {
   document.getElementById('input-text').value = '';
-  document.getElementById('output-text').innerHTML = '<span class="placeholder-text">La traducción aparecerá aquí...</span>';
-  document.getElementById('token-body').innerHTML  = '<tr><td colspan="5" class="empty-row">Ejecuta el compilador primero.</td></tr>';
-  document.getElementById('symbol-body').innerHTML = '<tr><td colspan="6" class="empty-row">Ejecuta el compilador primero.</td></tr>';
-  document.getElementById('error-body').innerHTML  = '<tr><td colspan="5" class="empty-row">No hay errores registrados.</td></tr>';
-  document.getElementById('tree-container').innerHTML = '<p class="placeholder-text">Ejecuta el compilador primero para ver el árbol.</p>';
-  document.getElementById('bnf-display').textContent  = 'Las reglas BNF aparecerán aquí...';
+  document.getElementById('output-text').innerHTML =
+    '<span class="placeholder-text">La traducción aparecerá aquí...</span>';
+  document.getElementById('token-body').innerHTML  =
+    '<tr><td colspan="5" class="empty-row">Ejecuta el compilador primero.</td></tr>';
+  document.getElementById('symbol-body').innerHTML =
+    '<tr><td colspan="6" class="empty-row">Ejecuta el compilador primero.</td></tr>';
+  document.getElementById('error-body').innerHTML  =
+    '<tr><td colspan="5" class="empty-row">No hay errores registrados.</td></tr>';
+  document.getElementById('tree-container').innerHTML =
+    '<p class="placeholder-text">Ejecuta el compilador primero para ver el árbol.</p>';
+  document.getElementById('bnf-display').textContent =
+    'Las reglas BNF aparecerán aquí...';
   updateCharCount();
   resetIndicators();
   setStatus('Listo para compilar.');
 }
 
-// --- Indicadores de estado ---
+// --- Indicadores ---
 function resetIndicators() {
   ['ind-lex','ind-syn','ind-sem'].forEach(id => {
-    const el = document.getElementById(id);
-    el.classList.remove('ok','err');
+    document.getElementById(id).classList.remove('ok','err');
   });
 }
-
 function setIndicator(id, status) {
   const el = document.getElementById(id);
   el.classList.remove('ok','err');
   el.classList.add(status);
 }
-
 function setStatus(msg) {
   document.getElementById('status-msg').textContent = msg;
 }
 
 // =============================================
-// COMPILAR — función principal
+// API DE TRADUCCIÓN — MyMemory
 // =============================================
-function compile() {
+
+/**
+ * Traduce un texto completo usando la API de MyMemory
+ * @param {string} text  - texto a traducir
+ * @param {string} lang  - idioma de entrada: 'EN' o 'ES'
+ * @returns {Promise<string>} - texto traducido
+ */
+async function translateWithAPI(text, lang) {
+  const langpair = lang === 'EN' ? 'en|es' : 'es|en';
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Error de red');
+    const data = await response.json();
+
+    if (data.responseStatus === 200) {
+      return data.responseData.translatedText;
+    } else {
+      throw new Error('API no respondió correctamente');
+    }
+  } catch (error) {
+    console.error('Error con MyMemory API:', error);
+    return null;
+  }
+}
+
+// =============================================
+// COMPILAR — función principal (async)
+// =============================================
+async function compile() {
   const text = document.getElementById('input-text').value.trim();
   if (!text) {
     setStatus('⚠ Ingresa texto para compilar.');
     return;
   }
 
-  setStatus('Compilando...');
+  // Deshabilitar botón mientras procesa
+  const btn = document.querySelector('.compile-btn');
+  btn.textContent = '⏳ Compilando...';
+  btn.disabled = true;
+
+  setStatus('Ejecutando análisis léxico...');
   resetIndicators();
 
   // 1. ANÁLISIS LÉXICO
@@ -131,16 +167,18 @@ function compile() {
   renderTokenTable(lexResult.tokens);
 
   // 2. ANÁLISIS SINTÁCTICO
+  setStatus('Ejecutando análisis sintáctico...');
   const synResult = syntacticAnalysis(lexResult.tokens, currentInputLang);
   setIndicator('ind-syn', synResult.errors.length === 0 ? 'ok' : 'err');
   renderTree(synResult.tree, synResult.bnf);
 
   // 3. ANÁLISIS SEMÁNTICO
+  setStatus('Ejecutando análisis semántico...');
   const semResult = semanticAnalysis(lexResult.tokens, currentInputLang);
   setIndicator('ind-sem', semResult.errors.length === 0 ? 'ok' : 'err');
   renderSymbolTable(semResult.symbols);
 
-  // 4. TABLA DE ERRORES (unión de todos los análisis)
+  // 4. TABLA DE ERRORES
   const allErrors = [
     ...lexResult.errors.map(e => ({...e, type: 'Léxico'})),
     ...synResult.errors.map(e => ({...e, type: 'Sintáctico'})),
@@ -148,33 +186,50 @@ function compile() {
   ];
   renderErrorTable(allErrors);
 
-  // 5. TRADUCCIÓN
-  if (allErrors.length === 0) {
-    const translation = translate(lexResult.tokens, currentInputLang);
-    document.getElementById('output-text').textContent = translation;
-    setStatus('✓ Compilación exitosa — sin errores detectados.');
+  // 5. TRADUCCIÓN CON API
+  setStatus('Traduciendo con MyMemory API...');
+  document.getElementById('output-text').innerHTML =
+    '<span class="placeholder-text">⏳ Traduciendo...</span>';
+
+  const apiTranslation = await translateWithAPI(text, currentInputLang);
+
+  if (apiTranslation) {
+    document.getElementById('output-text').textContent = apiTranslation;
+
+    if (allErrors.length === 0) {
+      setStatus('✓ Compilación exitosa — sin errores detectados.');
+    } else {
+      setStatus(`⚠ Compilación con ${allErrors.length} advertencia(s). Traducción completada.`);
+    }
   } else {
-    document.getElementById('output-text').innerHTML =
-      `<span style="color:var(--red)">⚠ No se puede traducir: se encontraron ${allErrors.length} error(es). Revisa la tabla de errores.</span>`;
-    setStatus(`⚠ Compilación finalizada con ${allErrors.length} error(es).`);
+    // Fallback: si la API falla, usar traducción del diccionario
+    const fallback = translate(lexResult.tokens, currentInputLang);
+    document.getElementById('output-text').textContent = fallback;
+    setStatus('⚠ API no disponible — usando traducción del diccionario.');
   }
+
+  // Rehabilitar botón
+  btn.textContent = '▶ Compilar';
+  btn.disabled = false;
 }
 
 // =============================================
-// RENDER — funciones de tabla
+// RENDER — tablas
 // =============================================
 
 function getBadgeClass(type) {
   const map = {
-    'Sustantivo':   'sustantivo',
-    'Verbo':        'verbo',
-    'Adjetivo':     'adjetivo',
-    'Adverbio':     'adverbio',
-    'Preposición':  'preposicion',
-    'Artículo':     'articulo',
-    'Pronombre':    'pronombre',
-    'Puntuación':   'puntuacion',
-    'Desconocido':  'error',
+    'Sustantivo':  'sustantivo',
+    'Verbo':       'verbo',
+    'Adjetivo':    'adjetivo',
+    'Adverbio':    'adverbio',
+    'Preposición': 'preposicion',
+    'Artículo':    'articulo',
+    'Pronombre':   'pronombre',
+    'Puntuación':  'puntuacion',
+    'Conjunción':  'verbo',
+    'Interjección':'adverbio',
+    'Desconocido': 'error',
   };
   return 'badge badge-' + (map[type] || 'default');
 }
@@ -190,7 +245,7 @@ function renderTokenTable(tokens) {
       <td>${i + 1}</td>
       <td><span class="${getBadgeClass(t.type)}">${t.type.toUpperCase()}</span></td>
       <td>${t.lexeme}</td>
-      <td>${t.category || t.type}</td>
+      <td>${t.subtype || t.type}</td>
       <td>${t.line}</td>
     </tr>
   `).join('');
