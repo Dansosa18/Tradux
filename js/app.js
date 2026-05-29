@@ -281,3 +281,55 @@ function renderTree(tree, bnf) {
   container.appendChild(pre);
   document.getElementById('bnf-display').textContent = bnf;
 }
+
+// =============================================
+// RECONOCIMIENTO DE VOZ — Web Speech API
+// =============================================
+let recognition = null;
+let isListening = false;
+
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome u Opera.');
+    return;
+  }
+
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+
+  // Usar el idioma seleccionado en Tradux
+  recognition.lang = currentInputLang === 'EN' ? 'en-US' : 'es-GT';
+  recognition.continuous     = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('mic-btn').textContent = '🔴';
+    document.getElementById('mic-btn').title = 'Escuchando... (click para detener)';
+    setStatus('🎤 Escuchando...');
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    document.getElementById('input-text').value = transcript;
+    updateCharCount();
+    setStatus(`✓ Voz capturada: "${transcript}"`);
+  };
+
+  recognition.onerror = (event) => {
+    setStatus(`⚠ Error de voz: ${event.error}`);
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('mic-btn').textContent = '🎤';
+    document.getElementById('mic-btn').title = 'Reconocimiento de voz';
+  };
+
+  recognition.start();
+}

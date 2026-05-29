@@ -487,3 +487,23 @@ textarea::placeholder { color: var(--text3); }
   .header { padding: 0 1rem; }
   .panel { padding: 1rem; }
 }
+/* --- Botón de micrófono --- */
+.mic-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.1rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.mic-btn:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(79,142,247,0.4);
+  transform: scale(1.1);
+}
