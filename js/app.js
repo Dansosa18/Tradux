@@ -304,8 +304,8 @@ function toggleVoice() {
 
   // Usar el idioma seleccionado en Tradux
   recognition.lang = currentInputLang === 'EN' ? 'en-US' : 'es-GT';
-  recognition.continuous     = false;
-  recognition.interimResults = false;
+  recognition.continuous     = true;
+  recognition.interimResults = true;
 
   recognition.onstart = () => {
     isListening = true;
@@ -319,6 +319,10 @@ function toggleVoice() {
     document.getElementById('input-text').value = transcript;
     updateCharCount();
     setStatus(`✓ Voz capturada: "${transcript}"`);
+  };
+
+  recognition.onspeechstart = () => {
+  setStatus('🎤 Hablando...');
   };
 
   recognition.onerror = (event) => {
