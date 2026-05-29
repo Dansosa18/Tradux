@@ -1,4 +1,3 @@
-
 // =============================================
 // TRADUX — app.js
 // Controlador principal de la interfaz
@@ -116,22 +115,13 @@ function setStatus(msg) {
 // =============================================
 // API DE TRADUCCIÓN — MyMemory
 // =============================================
-
-/**
- * Traduce un texto completo usando la API de MyMemory
- * @param {string} text  - texto a traducir
- * @param {string} lang  - idioma de entrada: 'EN' o 'ES'
- * @returns {Promise<string>} - texto traducido
- */
 async function translateWithAPI(text, lang) {
   const langpair = lang === 'EN' ? 'en|es' : 'es|en';
   const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langpair}`;
-
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Error de red');
     const data = await response.json();
-
     if (data.responseStatus === 200) {
       return data.responseData.translatedText;
     } else {
@@ -153,15 +143,13 @@ async function compile() {
     return;
   }
 
-  // Deshabilitar botón mientras procesa
   const btn = document.querySelector('.compile-btn');
   btn.textContent = '⏳ Compilando...';
   btn.disabled = true;
 
-  setStatus('Ejecutando análisis léxico...');
   resetIndicators();
 
-  // 1. ANÁLISIS LÉXICO
+  // 1. ANÁLISIS LÉXICO 
   const lexResult = lexicalAnalysis(text, currentInputLang);
   setIndicator('ind-lex', lexResult.errors.length === 0 ? 'ok' : 'err');
   renderTokenTable(lexResult.tokens);
@@ -186,7 +174,7 @@ async function compile() {
   ];
   renderErrorTable(allErrors);
 
-  // 5. TRADUCCIÓN CON API
+  // 5. TRADUCCIÓN CON API MyMemory
   setStatus('Traduciendo con MyMemory API...');
   document.getElementById('output-text').innerHTML =
     '<span class="placeholder-text">⏳ Traduciendo...</span>';
@@ -195,20 +183,17 @@ async function compile() {
 
   if (apiTranslation) {
     document.getElementById('output-text').textContent = apiTranslation;
-
     if (allErrors.length === 0) {
       setStatus('✓ Compilación exitosa — sin errores detectados.');
     } else {
       setStatus(`⚠ Compilación con ${allErrors.length} advertencia(s). Traducción completada.`);
     }
   } else {
-    // Fallback: si la API falla, usar traducción del diccionario
     const fallback = translate(lexResult.tokens, currentInputLang);
     document.getElementById('output-text').textContent = fallback;
     setStatus('⚠ API no disponible — usando traducción del diccionario.');
   }
 
-  // Rehabilitar botón
   btn.textContent = '▶ Compilar';
   btn.disabled = false;
 }
@@ -241,7 +226,7 @@ function renderTokenTable(tokens) {
     return;
   }
   tbody.innerHTML = tokens.map((t, i) => `
-    <tr>
+    <tr class="${t.classifiedByAI ? 'ai-classified' : ''}">
       <td>${i + 1}</td>
       <td><span class="${getBadgeClass(t.type)}">${t.type.toUpperCase()}</span></td>
       <td>${t.lexeme}</td>
@@ -290,7 +275,7 @@ function renderErrorTable(errors) {
 function renderTree(tree, bnf) {
   const pre = document.createElement('pre');
   pre.className = 'tree-node-root';
-  pre.textContent = tree;  // textContent en vez de innerHTML
+  pre.textContent = tree;
   const container = document.getElementById('tree-container');
   container.innerHTML = '';
   container.appendChild(pre);

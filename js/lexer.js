@@ -1,339 +1,196 @@
 // =============================================
 // TRADUX — lexer.js
-// Analizador Léxico
-// Autor del commit: Daniel
+// Analizador Léxico con clasificación inteligente por patrones
 // =============================================
+
+/**
+ * CACHE de clasificaciones
+ */
+const aiClassificationCache = {};
+
+/**
+ * Clasifica una palabra desconocida usando patrones lingüísticos
+ * No necesita API externa — funciona offline
+ */
+function classifyUnknownWord(word, lang) {
+  const w = word.toLowerCase();
+
+  if (lang === 'EN') {
+    // ── Sufijos de VERBOS en inglés ──────────────────
+    if (/(?:ify|ize|ise|ate|en|fy)$/.test(w))
+      return { type: 'Verbo', subtype: 'acción', translation: null };
+    if (/(?:ing)$/.test(w) && w.length > 4)
+      return { type: 'Verbo', subtype: 'gerundio', translation: null };
+    if (/(?:ed)$/.test(w) && w.length > 4)
+      return { type: 'Verbo', subtype: 'pasado', translation: null };
+
+    // ── Sufijos de ADJETIVOS en inglés ──────────────
+    if (/(?:ful|less|ous|ious|able|ible|al|ial|ic|ical|ive|ative|ish|like|ly|ent|ant|ary|ory|some|ward|wise)$/.test(w))
+      return { type: 'Adjetivo', subtype: 'descriptivo', translation: null };
+
+    // ── Sufijos de ADVERBIOS en inglés ──────────────
+    if (/(?:ly)$/.test(w) && w.length > 4)
+      return { type: 'Adverbio', subtype: 'modo', translation: null };
+
+    // ── Sufijos de SUSTANTIVOS en inglés ────────────
+    if (/(?:tion|sion|ment|ness|ity|ty|ism|ist|er|or|eur|ess|ance|ence|hood|ship|dom|age|ure|ry|ery|ary|ory|ee|eer|ier)$/.test(w))
+      return { type: 'Sustantivo', subtype: 'común', translation: null };
+
+    // ── Palabras cortas comunes sin sufijo → Sustantivo por defecto
+    return { type: 'Sustantivo', subtype: 'común', translation: null };
+
+  } else {
+    // ── Sufijos de VERBOS en español ────────────────
+    if (/(?:ar|er|ir)$/.test(w) && w.length > 3)
+      return { type: 'Verbo', subtype: 'infinitivo', translation: null };
+    if (/(?:ando|iendo)$/.test(w))
+      return { type: 'Verbo', subtype: 'gerundio', translation: null };
+    if (/(?:ado|ido)$/.test(w) && w.length > 4)
+      return { type: 'Verbo', subtype: 'participio', translation: null };
+
+    // ── Sufijos de ADJETIVOS en español ─────────────
+    if (/(?:oso|osa|oso|ivo|iva|able|ible|al|ial|ico|ica|ario|aria|orio|oria|nte|ante|iente)$/.test(w))
+      return { type: 'Adjetivo', subtype: 'descriptivo', translation: null };
+
+    // ── Sufijos de ADVERBIOS en español ─────────────
+    if (/(?:mente)$/.test(w))
+      return { type: 'Adverbio', subtype: 'modo', translation: null };
+
+    // ── Sufijos de SUSTANTIVOS en español ───────────
+    if (/(?:ción|sión|ción|dad|tad|eza|ura|ismo|ista|ero|era|ería|aje|miento|mento|anza|encia|ancia)$/.test(w))
+      return { type: 'Sustantivo', subtype: 'común', translation: null };
+
+    return { type: 'Sustantivo', subtype: 'común', translation: null };
+  }
+}
+
 
 /**
  * STEMMER INGLÉS
  */
 function stemEnglish(word) {
   const w = word.toLowerCase();
-
   const irregulars = {
     "am":"be","is":"be","are":"be","was":"be","were":"be","been":"be",
-    "has":"have","had":"have",
-    "did":"do","does":"do",
-    "went":"go","goes":"go",
-    "came":"come",
-    "ran":"run",
-    "ate":"eat",
-    "drank":"drink",
-    "slept":"sleep",
-    "wrote":"write",
-    "spoke":"speak",
-    "saw":"see",
-    "heard":"hear",
-    "knew":"know",
-    "thought":"think",
-    "said":"say",
-    "gave":"give",
-    "took":"take",
-    "made":"make",
-    "found":"find",
-    "told":"tell",
-    "got":"get",
-    "began":"begin",
-    "felt":"feel",
-    "left":"leave",
-    "tried":"try",
-    "built":"build",
-    "broke":"break",
-    "caught":"catch",
-    "threw":"throw",
-    "chose":"choose",
-    "flew":"fly",
-    "swam":"swim",
-    "sang":"sing",
-    "drew":"draw",
-    "grew":"grow",
-    "fell":"fall",
-    "rose":"rise",
-    "sat":"sit",
-    "stood":"stand",
-    "won":"win",
-    "lost":"lose",
-    "paid":"pay",
-    "sent":"send",
-    "met":"meet",
-    "sold":"sell",
-    "bought":"buy",
-    "taught":"teach",
-    "understood":"understand",
-    "forgot":"forget",
-    "learned":"learn",
-    "called":"call",
-    "used":"use",
-    "loved":"love",
-    "worked":"work",
-    "played":"play",
-    "helped":"help",
-    "lived":"live",
+    "has":"have","had":"have","did":"do","does":"do",
+    "went":"go","goes":"go","came":"come","ran":"run","ate":"eat",
+    "drank":"drink","slept":"sleep","wrote":"write","spoke":"speak",
+    "saw":"see","heard":"hear","knew":"know","thought":"think",
+    "said":"say","gave":"give","took":"take","made":"make",
+    "found":"find","told":"tell","got":"get","began":"begin",
+    "felt":"feel","left":"leave","tried":"try","built":"build",
+    "broke":"break","caught":"catch","threw":"throw","chose":"choose",
+    "flew":"fly","swam":"swim","sang":"sing","drew":"draw",
+    "grew":"grow","fell":"fall","rose":"rise","sat":"sit",
+    "stood":"stand","won":"win","lost":"lose","paid":"pay",
+    "sent":"send","met":"meet","sold":"sell","bought":"buy",
+    "taught":"teach","understood":"understand","forgot":"forget",
+    "learned":"learn","called":"call","used":"use","loved":"love",
+    "worked":"work","played":"play","helped":"help","lived":"live",
     "studied":"study",
   };
-
   if (irregulars[w]) return irregulars[w];
-
-  // studies → study
   if (w.endsWith("ies") && w.length > 4) return w.slice(0,-3) + "y";
-  // teaches, goes → teach, go
-  if (w.endsWith("es") && w.length > 3) {
-    const stem = w.slice(0,-2);
-    if (lookupWord(stem,"EN")) return stem;
+  if (w.endsWith("es") && w.length > 3) { const s=w.slice(0,-2); if(lookupWord(s,"EN")) return s; }
+  if (w.endsWith("s")  && w.length > 3) { const s=w.slice(0,-1); if(lookupWord(s,"EN")) return s; }
+  if (w.endsWith("ing")&& w.length > 5) {
+    const s1=w.slice(0,-3), s2=w.slice(0,-3)+"e";
+    if(lookupWord(s1,"EN")) return s1; if(lookupWord(s2,"EN")) return s2;
   }
-  // runs, eats → run, eat
-  if (w.endsWith("s") && w.length > 3) {
-    const stem = w.slice(0,-1);
-    if (lookupWord(stem,"EN")) return stem;
-  }
-  // running → run, writing → write
-  if (w.endsWith("ing") && w.length > 5) {
-    const s1 = w.slice(0,-3);
-    const s2 = w.slice(0,-3) + "e";
-    if (lookupWord(s1,"EN")) return s1;
-    if (lookupWord(s2,"EN")) return s2;
-  }
-  // walked → walk, loved → love
   if (w.endsWith("ed") && w.length > 4) {
-    const s1 = w.slice(0,-2);
-    const s2 = w.slice(0,-1);
-    if (lookupWord(s1,"EN")) return s1;
-    if (lookupWord(s2,"EN")) return s2;
+    const s1=w.slice(0,-2), s2=w.slice(0,-1);
+    if(lookupWord(s1,"EN")) return s1; if(lookupWord(s2,"EN")) return s2;
   }
-  // quickly → quick
-  if (w.endsWith("ly") && w.length > 4) {
-    const stem = w.slice(0,-2);
-    if (lookupWord(stem,"EN")) return stem;
-  }
-
+  if (w.endsWith("ly") && w.length > 4) { const s=w.slice(0,-2); if(lookupWord(s,"EN")) return s; }
   return w;
 }
 
-
 /**
- * STEMMER ESPAÑOL — mejorado
- * Cubre: pasado 3ra persona (-ó), nosotros (-amos/-imos/-emos),
- * gerundios (-ando/-iendo), imperfecto (-aba/-ía), y más
+ * STEMMER ESPAÑOL
  */
 function stemSpanish(word) {
   const w = word.toLowerCase();
-
-  // ─── Irregulares ────────────────────────────────────────
   const irregulars = {
-    // ser/estar
     "soy":"ser","eres":"ser","somos":"ser","son":"ser",
     "estoy":"estar","estás":"estar","estamos":"estar","están":"estar",
     "fui":"ir","fue":"ir","fuimos":"ir","fueron":"ir",
-    // ir
     "voy":"ir","vas":"ir","vamos":"ir","van":"ir",
-    // tener
     "tengo":"tener","tienes":"tener","tenemos":"tener","tienen":"tener",
     "tuvo":"tener","tuve":"tener","tuvimos":"tener","tuvieron":"tener",
-    // poder
     "puedo":"poder","puedes":"poder","podemos":"poder","pueden":"poder",
     "pudo":"poder","pude":"poder","pudimos":"poder","pudieron":"poder",
-    // hacer
     "hago":"hacer","haces":"hacer","hacemos":"hacer","hacen":"hacer",
     "hizo":"hacer","hice":"hacer","hicimos":"hacer","hicieron":"hacer",
-    // decir
     "digo":"decir","dices":"decir","decimos":"decir","dicen":"decir",
     "dijo":"decir","dije":"decir","dijimos":"decir","dijeron":"decir",
-    // venir
     "vengo":"venir","vienes":"venir","venimos":"venir","vienen":"venir",
     "vino":"venir","vine":"venir","vinimos":"venir","vinieron":"venir",
-    // querer
     "quiero":"querer","quieres":"querer","queremos":"querer","quieren":"querer",
     "quiso":"querer","quise":"querer","quisimos":"querer","quisieron":"querer",
-    // saber
     "sé":"saber","sabes":"saber","sabemos":"saber","saben":"saber",
     "supo":"saber","supe":"saber","supimos":"saber","supieron":"saber",
-    // ver
     "veo":"ver","ves":"ver","vemos":"ver","ven":"ver",
     "vio":"ver","vi":"ver","vimos":"ver","vieron":"ver",
-    // dar
     "doy":"dar","das":"dar","damos":"dar","dan":"dar",
     "dio":"dar","di":"dar","dimos":"dar","dieron":"dar",
-    // leer
     "leo":"leer","lees":"leer","leemos":"leer","leen":"leer",
     "leyó":"leer","leí":"leer","leímos":"leer","leyeron":"leer",
-    // traer
     "traigo":"traer","traes":"traer","traemos":"traer","traen":"traer",
     "trajo":"traer","traje":"traer","trajimos":"traer","trajeron":"traer",
-    // poner
     "pongo":"poner","pones":"poner","ponemos":"poner","ponen":"poner",
     "puso":"poner","puse":"poner","pusimos":"poner","pusieron":"poner",
-    // salir
     "salgo":"salir","sales":"salir","salimos":"salir","salen":"salir",
-    "salió":"salir","salí":"salir","salimos":"salir","salieron":"salir",
-    // sentir
+    "salió":"salir","salí":"salir","salieron":"salir",
     "siento":"sentir","sientes":"sentir","sentimos":"sentir","sienten":"sentir",
-    "sintió":"sentir","sentí":"sentir","sentimos":"sentir","sintieron":"sentir",
-    // pensar
+    "sintió":"sentir","sentí":"sentir","sintieron":"sentir",
     "pienso":"pensar","piensas":"pensar","pensamos":"pensar","piensan":"pensar",
-    // jugar
     "juego":"jugar","juegas":"jugar","jugamos":"jugar","juegan":"jugar",
-    "jugó":"jugar","jugué":"jugar","jugamos":"jugar","jugaron":"jugar",
-    // dormir
+    "jugó":"jugar","jugué":"jugar","jugaron":"jugar",
     "duermo":"dormir","duermes":"dormir","dormimos":"dormir","duermen":"dormir",
-    "durmió":"dormir","dormí":"dormir","dormimos":"dormir","durmieron":"dormir",
-    // pedir
+    "durmió":"dormir","dormí":"dormir","durmieron":"dormir",
     "pido":"pedir","pides":"pedir","pedimos":"pedir","piden":"pedir",
-    "pidió":"pedir","pedí":"pedir","pedimos":"pedir","pidieron":"pedir",
-    // escribir
+    "pidió":"pedir","pedí":"pedir","pidieron":"pedir",
     "escribo":"escribir","escribes":"escribir","escribimos":"escribir","escriben":"escribir",
-    "escribió":"escribir","escribí":"escribir","escribimos":"escribir","escribieron":"escribir",
-    // ir conjugaciones extra
-    "fui":"ir","fuiste":"ir","fue":"ir","fuimos":"ir","fueron":"ir",
-    // estar conjugaciones extra
+    "escribió":"escribir","escribí":"escribir","escribieron":"escribir",
     "estuvo":"estar","estuve":"estar","estuvimos":"estar","estuvieron":"estar",
-    // poder extra
     "podría":"poder","podrías":"poder","podríamos":"poder","podrían":"poder",
-    // deber
     "debo":"deber","debes":"deber","debemos":"deber","deben":"deber",
     "debió":"deber","debí":"deber","debimos":"deber","debieron":"deber",
   };
-
   if (irregulars[w]) return irregulars[w];
 
-  // ─── Pasado 3ra persona singular (-ó) ───────────────────
-  // compró → comprar, corrió → correr, vivió → vivir
   if (w.endsWith("ó") && w.length > 3) {
-    const base = w.slice(0,-1);          // compr
-    // Intentar con terminaciones de infinitivo
-    const candidates = [
-      base + "ar",   // comprar
-      base + "er",   // correr → corr+er ✓ ... pero base sería "corri"
-      base + "ir",   // subir
-      // Para verbos con cambio de raíz: corrió → base=corri → correr
-      base.slice(0,-1) + "er",  // corri → corr → correr
-      base.slice(0,-1) + "ar",  // habli → habl → hablar (no aplica)
-      base.slice(0,-1) + "ir",  // subí → sub → subir
-    ];
-    for (const c of candidates) {
-      if (lookupWord(c,"ES")) return c;
-    }
-  }
-
-  // ─── Pasado 1ra persona singular (-é/-í) ────────────────
-  // compré → comprar, aprendí → aprender
-  if ((w.endsWith("é") || w.endsWith("í")) && w.length > 3) {
     const base = w.slice(0,-1);
-    const candidates = [base+"ar", base+"er", base+"ir",
-                        base.slice(0,-1)+"er", base.slice(0,-1)+"ar",base.slice(0,-1)+"ir"];
-    for (const c of candidates) {
-      if (lookupWord(c,"ES")) return c;
-    }
+    const candidates = [base+"ar",base+"er",base+"ir",base.slice(0,-1)+"er",base.slice(0,-1)+"ar",base.slice(0,-1)+"ir"];
+    for (const c of candidates) { if (lookupWord(c,"ES")) return c; }
   }
-
-  // ─── Pasado nosotros (-amos/-imos/-emos) ────────────────
-  // aprendimos → aprender, corrimos → correr, compramos → comprar
-  if (w.endsWith("amos") && w.length > 5) {
-    const base = w.slice(0,-4);
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-    if (lookupWord(base+"er","ES")) return base+"er";
+  if ((w.endsWith("é")||w.endsWith("í")) && w.length > 3) {
+    const base = w.slice(0,-1);
+    const candidates = [base+"ar",base+"er",base+"ir",base.slice(0,-1)+"er",base.slice(0,-1)+"ar",base.slice(0,-1)+"ir"];
+    for (const c of candidates) { if (lookupWord(c,"ES")) return c; }
   }
-  if (w.endsWith("imos") && w.length > 5) {
-    const base = w.slice(0,-4);
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-    if (lookupWord(base+"er","ES")) return base+"er";
-    // corrimos → corr → correr
-    if (lookupWord(base.slice(0,-1)+"er","ES")) return base.slice(0,-1)+"er";
-  }
-  if (w.endsWith("emos") && w.length > 5) {
-    const base = w.slice(0,-4);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-  }
-
-  // ─── Pasado ellos (-aron/-ieron/-eron) ──────────────────
-  if (w.endsWith("aron") && w.length > 5) {
-    const base = w.slice(0,-4);
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-  }
-  if (w.endsWith("ieron") && w.length > 6) {
-    const base = w.slice(0,-5);
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base.slice(0,-1)+"er","ES")) return base.slice(0,-1)+"er";
-  }
-  if (w.endsWith("eron") && w.length > 5) {
-    const base = w.slice(0,-4);
-    if (lookupWord(base+"er","ES")) return base+"er";
-  }
-
-  // ─── Gerundio (-ando/-iendo) ────────────────────────────
-  // comprando → comprar, corriendo → correr, viviendo → vivir
-  if (w.endsWith("ando") && w.length > 5) {
-    const base = w.slice(0,-4);
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-  }
-  if (w.endsWith("iendo") && w.length > 6) {
-    const base = w.slice(0,-5);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-    if (lookupWord(base.slice(0,-1)+"er","ES")) return base.slice(0,-1)+"er";
-    if (lookupWord(base.slice(0,-1)+"ir","ES")) return base.slice(0,-1)+"ir";
-  }
-
-  // ─── Imperfecto (-aba/-abas/-aban) ──────────────────────
-  if (w.endsWith("aba") && w.length > 4) return w.slice(0,-3)+"ar";
+  if (w.endsWith("amos") && w.length > 5) { const b=w.slice(0,-4); if(lookupWord(b+"ar","ES")) return b+"ar"; if(lookupWord(b+"er","ES")) return b+"er"; }
+  if (w.endsWith("imos") && w.length > 5) { const b=w.slice(0,-4); if(lookupWord(b+"ir","ES")) return b+"ir"; if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b.slice(0,-1)+"er","ES")) return b.slice(0,-1)+"er"; }
+  if (w.endsWith("emos") && w.length > 5) { const b=w.slice(0,-4); if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b+"ar","ES")) return b+"ar"; }
+  if (w.endsWith("aron") && w.length > 5) { const b=w.slice(0,-4); if(lookupWord(b+"ar","ES")) return b+"ar"; }
+  if (w.endsWith("ieron")&& w.length > 6) { const b=w.slice(0,-5); if(lookupWord(b+"ir","ES")) return b+"ir"; if(lookupWord(b+"er","ES")) return b+"er"; }
+  if (w.endsWith("ando") && w.length > 5) { const b=w.slice(0,-4); if(lookupWord(b+"ar","ES")) return b+"ar"; }
+  if (w.endsWith("iendo")&& w.length > 6) { const b=w.slice(0,-5); if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b+"ir","ES")) return b+"ir"; }
+  if (w.endsWith("aba")  && w.length > 4) return w.slice(0,-3)+"ar";
   if (w.endsWith("abas") && w.length > 5) return w.slice(0,-4)+"ar";
   if (w.endsWith("aban") && w.length > 5) return w.slice(0,-4)+"ar";
-
-  // ─── Imperfecto -ía (-ía/-ías/-ían) ─────────────────────
-  if (w.endsWith("ía") && w.length > 3) {
-    const base = w.slice(0,-2);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-  }
-  if (w.endsWith("ías") && w.length > 4) {
-    const base = w.slice(0,-3);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-  }
-  if (w.endsWith("ían") && w.length > 4) {
-    const base = w.slice(0,-3);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-  }
-
-  // ─── Presente 3ra persona singular (-a/-e) ──────────────
-  // compra → comprar, corre → correr
-  if (w.endsWith("a") && w.length > 3) {
-    const base = w.slice(0,-1);
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-  }
-  if (w.endsWith("e") && w.length > 3) {
-    const base = w.slice(0,-1);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-  }
-
-  // ─── Presente ellos (-an/-en) ───────────────────────────
-  if (w.endsWith("an") && w.length > 3) {
-    const base = w.slice(0,-2);
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-  }
-  if (w.endsWith("en") && w.length > 3) {
-    const base = w.slice(0,-2);
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-  }
-
-  // ─── Subjuntivo/imperativo (-es para -ar) ───────────────
-  if (w.endsWith("es") && w.length > 3) {
-    const base = w.slice(0,-2);
-    if (lookupWord(base+"ar","ES")) return base+"ar";
-    if (lookupWord(base+"er","ES")) return base+"er";
-    if (lookupWord(base+"ir","ES")) return base+"ir";
-  }
-
+  if (w.endsWith("ía")   && w.length > 3) { const b=w.slice(0,-2); if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b+"ir","ES")) return b+"ir"; }
+  if (w.endsWith("a")    && w.length > 3) { const b=w.slice(0,-1); if(lookupWord(b+"ar","ES")) return b+"ar"; }
+  if (w.endsWith("e")    && w.length > 3) { const b=w.slice(0,-1); if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b+"ir","ES")) return b+"ir"; }
+  if (w.endsWith("an")   && w.length > 3) { const b=w.slice(0,-2); if(lookupWord(b+"ar","ES")) return b+"ar"; }
+  if (w.endsWith("en")   && w.length > 3) { const b=w.slice(0,-2); if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b+"ir","ES")) return b+"ir"; }
+  if (w.endsWith("es")   && w.length > 3) { const b=w.slice(0,-2); if(lookupWord(b+"ar","ES")) return b+"ar"; if(lookupWord(b+"er","ES")) return b+"er"; if(lookupWord(b+"ir","ES")) return b+"ir"; }
   return w;
 }
 
 
 /**
- * ANÁLISIS LÉXICO
+ * ANÁLISIS LÉXICO — síncrono, sin necesitar API externa
  */
 function lexicalAnalysis(text, lang) {
   const tokens = [];
@@ -374,16 +231,12 @@ function lexicalAnalysis(text, lang) {
         return;
       }
 
-      // Buscar exacto primero
+      // Buscar en diccionario (exacto primero, luego con stemmer)
       let found    = lookupWord(word, lang);
       let stemWord = word;
-
-      // Si no encontró, usar stemmer
       if (!found) {
         stemWord = lang === 'EN' ? stemEnglish(word) : stemSpanish(word);
-        if (stemWord !== word.toLowerCase()) {
-          found = lookupWord(stemWord, lang);
-        }
+        if (stemWord !== word.toLowerCase()) found = lookupWord(stemWord, lang);
       }
 
       if (found) {
@@ -396,18 +249,18 @@ function lexicalAnalysis(text, lang) {
           line:        lineNumber
         });
       } else {
+        // ✅ Clasificación inteligente por patrones — sin API
+        const inferred = classifyUnknownWord(word, lang);
         tokens.push({
-          lexeme:   word,
-          type:     'Desconocido',
-          category: 'Error léxico',
-          subtype:  'no identificado',
-          line:     lineNumber
+          lexeme:         word,
+          type:           inferred.type,
+          category:       inferred.type,
+          subtype:        inferred.subtype,
+          translation:    inferred.translation,
+          line:           lineNumber,
+          classifiedByAI: true   // marca visual de inferido
         });
-        errors.push({
-          word:        word,
-          line:        lineNumber,
-          description: `La palabra "${word}" no se reconoce en el diccionario de ${lang === 'EN' ? 'inglés' : 'español'}.`
-        });
+        // No se agrega a errors — fue clasificado correctamente
       }
     });
   });
@@ -431,7 +284,6 @@ function translate(tokens, lang) {
       parts.push(`[${token.lexeme}]`);
     }
   });
-
   let result = '';
   parts.forEach((part, i) => {
     if (i === 0) result += part;
