@@ -529,8 +529,9 @@ textarea::placeholder { color: var(--text3); }
     flex-wrap: wrap;
   }
 
-  .compile-btn { flex: 1; }
+  .compile-btn { flex: 1; min-width: 120px; }
   .clear-btn { flex: 1; }
+  .mic-btn { flex-shrink: 0; }
 }
 /* --- Botón de micrófono --- */
 .mic-btn {
