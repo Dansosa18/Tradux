@@ -221,7 +221,7 @@ function buildDerivationTree(tokens, lang) {
   const lines = [];
   const langLabel = lang === 'EN' ? 'Oración en Inglés' : 'Oración en Español';
 
-  lines.push(`<ORACIÓN> ::= ${langLabel}`);
+  lines.push(`<ORACIÓN> — ${langLabel}`);
   lines.push('│');
 
   // Agrupar tokens en constituyentes
@@ -347,7 +347,23 @@ function groupConstituents(tokens) {
       i++;
       continue;
     }
+    // Interjección
+    if (token.type === 'Interjección') {
+      groups.push({ label: 'Interjección', tokens: [token] });
+      i++;
+      continue;
+    }
 
+    // Número
+    if (token.type === 'Número') {
+      groups.push({ label: 'Literal Numérico', tokens: [token] });
+      i++;
+      continue;
+    }
+
+    // Desconocido
+    groups.push({ label: 'Token Desconocido', tokens: [token] });
+    i++;
     // Token desconocido
     groups.push({ label: 'Error', tokens: [token] });
     i++;

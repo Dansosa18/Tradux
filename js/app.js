@@ -288,7 +288,11 @@ function renderErrorTable(errors) {
 }
 
 function renderTree(tree, bnf) {
-  document.getElementById('tree-container').innerHTML =
-    `<pre class="tree-node-root">${tree}</pre>`;
+  const pre = document.createElement('pre');
+  pre.className = 'tree-node-root';
+  pre.textContent = tree;  // textContent en vez de innerHTML
+  const container = document.getElementById('tree-container');
+  container.innerHTML = '';
+  container.appendChild(pre);
   document.getElementById('bnf-display').textContent = bnf;
 }
