@@ -308,32 +308,34 @@ function toggleVoice() {
   recognition.interimResults = true;
 
   recognition.onstart = () => {
-    isListening = true;
-    document.getElementById('mic-btn').textContent = '🔴';
-    document.getElementById('mic-btn').title = 'Escuchando... (click para detener)';
-    setStatus('🎤 Escuchando...');
-  };
+  isListening = true;
+  document.getElementById('mic-btn').style.color = '#ff4444';
+  document.getElementById('mic-btn').style.boxShadow = '0 0 12px rgba(255,68,68,0.6)';
+  document.getElementById('mic-btn').title = 'Escuchando... (click para detener)';
+  setStatus('🎤 Escuchando...');
+};
 
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    document.getElementById('input-text').value = transcript;
-    updateCharCount();
-    setStatus(`✓ Voz capturada: "${transcript}"`);
-  };
+recognition.onresult = (event) => {
+  const transcript = event.results[0][0].transcript;
+  document.getElementById('input-text').value = transcript;
+  updateCharCount();
+  setStatus(`✓ Voz capturada: "${transcript}"`);
+};
 
-  recognition.onspeechstart = () => {
+recognition.onspeechstart = () => {
   setStatus('🎤 Hablando...');
-  };
+};
 
-  recognition.onerror = (event) => {
-    setStatus(`⚠ Error de voz: ${event.error}`);
-  };
+recognition.onerror = (event) => {
+  setStatus(`⚠ Error de voz: ${event.error}`);
+};
 
-  recognition.onend = () => {
-    isListening = false;
-    document.getElementById('mic-btn').textContent = '🎤';
-    document.getElementById('mic-btn').title = 'Reconocimiento de voz';
-  };
+recognition.onend = () => {
+  isListening = false;
+  document.getElementById('mic-btn').style.color = '';
+  document.getElementById('mic-btn').style.boxShadow = '';
+  document.getElementById('mic-btn').title = 'Reconocimiento de voz';
+};
 
-  recognition.start();
+recognition.start();
 }

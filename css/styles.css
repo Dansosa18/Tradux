@@ -483,9 +483,54 @@ textarea::placeholder { color: var(--text3); }
   }
   .divider { flex-direction: row; height: 40px; width: 100%; }
   .divider-line { flex: 1; height: 1px; width: auto; }
-  .nav { display: none; }
-  .header { padding: 0 1rem; }
   .panel { padding: 1rem; }
+
+  /* Header en móvil — logo arriba, nav abajo */
+  .header {
+    flex-direction: column;
+    height: auto;
+    padding: 10px 1rem 0 1rem;
+    gap: 8px;
+  }
+
+  .logo {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Nav scrolleable horizontalmente */
+  .nav {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    gap: 6px;
+  }
+
+  .nav::-webkit-scrollbar { display: none; }
+
+  .nav-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+  }
+
+  /* Actions en móvil — wrap */
+  .lang-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .compile-btn { flex: 1; }
+  .clear-btn { flex: 1; }
 }
 /* --- Botón de micrófono --- */
 .mic-btn {
