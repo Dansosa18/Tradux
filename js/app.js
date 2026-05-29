@@ -357,9 +357,10 @@ function speakOutput() {
   }
 
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = currentInputLang === 'EN' ? 'es-GT' : 'en-US';
+  utterance.lang = currentInputLang === 'EN' ? 'es-ES' : 'en-US';
   utterance.rate = 0.9;
   utterance.pitch = 1;
+  utterance.volume = 1;
 
   utterance.onstart = () => {
     document.getElementById('speak-btn').style.color = 'var(--accent)';
@@ -371,5 +372,22 @@ function speakOutput() {
     setStatus('✓ Lectura completada.');
   };
 
-  window.speechSynthesis.speak(utterance);
+  // Fix para iOS — esperar voces cargadas
+  const trySpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      // Buscar voz en español
+      const spanishVoice = voices.find(v => v.lang.startsWith('es'));
+      const englishVoice = voices.find(v => v.lang.startsWith('en'));
+      if (currentInputLang === 'EN' && spanishVoice) utterance.voice = spanishVoice;
+      if (currentInputLang === 'ES' && englishVoice) utterance.voice = englishVoice;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      // iOS tarda en cargar voces, reintentar
+      setTimeout(trySpeak, 200);
+    }
+  };
+
+  window.speechSynthesis.cancel();
+  trySpeak();
 }
