@@ -5,7 +5,7 @@
 
 *Compilar. Analizar. Traducir.*
 
-[![Demo](https://img.shields.io/badge/▶_Demo_en_vivo-4f8ef7?style=for-the-badge)](https://dansosa18.github.io/Tradux/)
+[![Demo](https://img.shields.io/badge/▶_Demo_en_vivo-4f8ef7?style=for-the-badge)](traduxx.netlify.app)
 [![HTML](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://dansosa18.github.io/Tradux/)
 [![JS](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://dansosa18.github.io/Tradux/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-222?style=for-the-badge&logo=github&logoColor=white)](https://dansosa18.github.io/Tradux/)
@@ -98,7 +98,7 @@ Tradux/
 ### En línea
 Visita directamente desde cualquier navegador:
 
-**[👉 dansosa18.github.io/Tradux](https://dansosa18.github.io/Tradux/)**
+**[👉 traduxx.netlify.app](traduxx.netlify.app)**
 
 ### Localmente
 ```bash
