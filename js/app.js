@@ -339,3 +339,37 @@ recognition.onend = () => {
 
 recognition.start();
 }
+
+// =============================================
+// SÍNTESIS DE VOZ — leer traducción en voz alta
+// =============================================
+function speakOutput() {
+  const text = document.getElementById('output-text').innerText.trim();
+  if (!text || text === 'La traducción aparecerá aquí...') {
+    setStatus('⚠ No hay traducción para leer.');
+    return;
+  }
+
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    document.getElementById('speak-btn').style.color = '';
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = currentInputLang === 'EN' ? 'es-GT' : 'en-US';
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+
+  utterance.onstart = () => {
+    document.getElementById('speak-btn').style.color = 'var(--accent)';
+    setStatus('🔊 Leyendo traducción...');
+  };
+
+  utterance.onend = () => {
+    document.getElementById('speak-btn').style.color = '';
+    setStatus('✓ Lectura completada.');
+  };
+
+  window.speechSynthesis.speak(utterance);
+}

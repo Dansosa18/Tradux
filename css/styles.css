@@ -186,6 +186,7 @@ body {
   letter-spacing: 0.5px;
   transition: all 0.15s;
   box-shadow: 0 0 20px rgba(79,142,247,0.3);
+  min-width: 140px;
 }
 
 .compile-btn:hover { background: #3b7de8; box-shadow: 0 0 28px rgba(79,142,247,0.5); transform: translateY(-1px); }
@@ -553,3 +554,17 @@ textarea::placeholder { color: var(--text3); }
   box-shadow: 0 0 12px rgba(79,142,247,0.4);
   transform: scale(1.1);
 }
+.speak-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.speak-btn:hover { border-color: var(--accent); color: var(--accent); }
